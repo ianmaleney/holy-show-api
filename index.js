@@ -4,7 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const port = 12345;
+const port = process.env.PORT || 8001;
 
 // Stripe Setup
 const Stripe = require('stripe');
