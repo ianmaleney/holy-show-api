@@ -46,6 +46,9 @@ app.use(express.json());
 //
 // Routes
 //
+app.get("/", (req, res) => {
+	return "Hello world.";
+});
 
 // Create the checkout session.
 app.post('/create-checkout-session', async (req, res) => {
