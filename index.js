@@ -47,7 +47,7 @@ app.use(express.json());
 // Routes
 //
 app.get("/", (req, res) => {
-	return "Hello world.";
+	res.send("Hello world.");
 });
 
 // Create the checkout session.
