@@ -54,6 +54,8 @@ app.get("/", (req, res) => {
 app.post('/create-checkout-session', async (req, res) => {
   const { priceId, start } = req.body;
 
+  console.log({ priceId, start });
+
   let sub_data = {
 	metadata: {
 		start: start
@@ -80,7 +82,7 @@ app.post('/create-checkout-session', async (req, res) => {
         },
       ],
       success_url: `${process.env.BASE_URL}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.BASE_URL}/`,
+      cancel_url: `${process.env.BASE_URL}/subscribe`,
 	});
 
     res.send({
