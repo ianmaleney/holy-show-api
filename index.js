@@ -67,6 +67,7 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 
   try {
+	  console.log({sub_data});
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
 	  payment_method_types: ["card"],
@@ -91,6 +92,7 @@ app.post('/create-checkout-session', async (req, res) => {
 	
   } catch (e) {
     res.status(400);
+	console.log(e.message);
     return res.send({
       error: {
         message: e.message,
