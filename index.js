@@ -54,8 +54,6 @@ app.get("/", (req, res) => {
 app.post('/create-checkout-session', async (req, res) => {
   const { priceId, start } = req.body;
 
-  console.log({ priceId, start });
-
   let sub_data = {
 	metadata: {
 		start: start
@@ -67,7 +65,6 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 
   try {
-	  console.log({sub_data});
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
 	  payment_method_types: ["card"],
