@@ -50,6 +50,7 @@ app.get("/", (req, res) => {
 });
 
 app.post('/create-subscription', async (req, res) => {
+	console.log(req.body);
 	const { priceId, start, name, email, address } = req.body;
 
 	try {
