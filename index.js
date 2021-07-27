@@ -79,10 +79,19 @@ app.post('/create-subscription', async (req, res) => {
 
 				console.log({subscription});
 
-				res.send({
-				  subscriptionId: subscription.id,
-				  clientSecret: subscription.latest_invoice.payment_intent.client_secret,
-				});
+				if (subscription.latest_invoice.payment_intent.client_secret) {
+					res.send({
+						start: start,
+						subscriptionId: subscription.id,
+						clientSecret: subscription.latest_invoice.payment_intent.client_secret
+					});
+				} else {
+					res.send({
+						start: start,
+						subscriptionId: subscription.id
+					});
+				}
+
 				
 			} catch (error) {
 				res.send(error);
