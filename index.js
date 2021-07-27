@@ -9,7 +9,6 @@ const port = process.env.PORT || 8001;
 // Stripe Setup
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SK);
-const {cc} = require('./cc');
 
 // Airtable Setup
 const Airtable = require('airtable');
@@ -50,52 +49,44 @@ app.get("/", (req, res) => {
 	res.send("Hello world.");
 });
 
-// Create the checkout session.
-app.post('/create-checkout-session', async (req, res) => {
-  const { priceId, start } = req.body;
+app.post('/create-subscription', async (req, res) => {
+	const { priceId, start, name, email, address } = req.body;
 
-  let sub_data = {
-	metadata: {
-		start: start
+	try {
+		const customer = await stripe.customers.create({
+			name: name,
+			email: email,
+			address: address
+		});
+		const sub_data = {
+			customer: customer.id,
+			items: [{
+				price: priceId,
+			}],
+			payment_behavior: 'default_incomplete',
+			expand: ['latest_invoice.payment_intent'],
+			metadata: {
+				start: start
+			}
+			}
+
+			if (start === "next") {
+				sub_data.trial_end = handleDate();
+			}
+
+			try {
+			const subscription = await stripe.subscriptions.create(sub_data);
+				res.send({
+				  subscriptionId: subscription.id,
+				  clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+				});
+				
+			} catch (error) {
+				res.send(error);
+			}
+	} catch (error) {
+		res.send(error);
 	}
-  };
-
-  if (start === "next") {
-	  sub_data.trial_end = handleDate();
-  }
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-	  payment_method_types: ["card"],
-	  billing_address_collection: 'auto',
-	  shipping_address_collection: {
-		  allowed_countries: cc
-		},
-	  subscription_data: sub_data,
-      line_items: [
-        {
-		  price: priceId,
-		  quantity: 1
-        },
-      ],
-      success_url: `${process.env.BASE_URL}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.BASE_URL}/subscribe`,
-	});
-
-    res.send({
-      sessionId: session.id,
-	});
-	
-  } catch (e) {
-    res.status(400);
-	console.log(e.message);
-    return res.send({
-      error: {
-        message: e.message,
-      }
-    });
-  }
 });
 
 
@@ -109,9 +100,9 @@ app.post('/webhooks', async (req, res) => {
     res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  const handleCheckoutSession = async checkoutSession => {
+  const handleNewSubscription = async subscription => {
 
-	const subscription = await stripe.subscriptions.retrieve(checkoutSession.subscription);
+	const customer = await stripe.customers.retrieve(subscription.customer);
 
 	// This resets the billing anchor to the 1st of next July, after the customer has already been charged for the current issue.
 	if (subscription.metadata.start === 'current') {
@@ -134,13 +125,13 @@ app.post('/webhooks', async (req, res) => {
 		{
 			"fields": {
 				Subscription: subscription.id,
-				Email: checkoutSession.customer_details.email,
-				Name: checkoutSession.shipping.name,
-				"Address Line One": checkoutSession.shipping.address.line1,
-				"Address Line Two": checkoutSession.shipping.address.line2,
-				City: checkoutSession.shipping.address.city,
-				Postcode: checkoutSession.shipping.address.postal_code,
-				Country: checkoutSession.shipping.address.country,
+				Email: customer.email,
+				Name: customer.name,
+				"Address Line One": customer.address.line1,
+				"Address Line Two": customer.address.line2,
+				City: customer.address.city,
+				Postcode: customer.address.postal_code,
+				Country: customer.address.country,
 				"Starts With": subscription.metadata.start,
 				Created: formatDateForAirtable(subscription.created)
 			}
@@ -161,8 +152,8 @@ app.post('/webhooks', async (req, res) => {
 		from: "Holy Show Subs <holyshow@mg.fallowmedia.com>",
 		to: process.env.ADMIN_EMAIL,
 		subject: "New Subscriber",
-		text: `Hey, Holy Show has a new subscriber.\n\n ${checkoutSession.shipping.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
-		html: `<p>Hey, you've got a new subscriber.</p><p>${checkoutSession.shipping.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
+		text: `Hey, Holy Show has a new subscriber.\n\n ${subData.customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
+		html: `<p>Hey, you've got a new subscriber.</p><p>${subData.customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
 	}).then(msg => console.log(msg)).catch(err => console.log(err));
 	  
 
@@ -179,9 +170,9 @@ app.post('/webhooks', async (req, res) => {
 
   // Handle the event
   switch (event.type) {
-    case 'checkout.session.completed':
-      const checkoutSession = event.data.object;
-	  handleCheckoutSession(checkoutSession);
+    case 'customer.subscription.created':
+      const newSubscriber = event.data.object;
+	  handleNewSubscription(newSubscriber);
       break;
     case 'customer.subscription.trial_will_end':
       let sub_data = event.data.object;
