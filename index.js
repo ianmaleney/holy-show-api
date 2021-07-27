@@ -155,8 +155,8 @@ app.post('/webhooks', async (req, res) => {
 		from: "Holy Show Subs <holyshow@mg.fallowmedia.com>",
 		to: process.env.ADMIN_EMAIL,
 		subject: "New Subscriber",
-		text: `Hey, Holy Show has a new subscriber.\n\n ${subData.customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
-		html: `<p>Hey, you've got a new subscriber.</p><p>${subData.customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
+		text: `Hey, Holy Show has a new subscriber.\n\n ${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
+		html: `<p>Hey, you've got a new subscriber.</p><p>${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
 	}).then(msg => console.log(msg)).catch(err => console.log(err));
 	  
 
