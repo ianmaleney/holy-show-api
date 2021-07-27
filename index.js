@@ -50,7 +50,6 @@ app.get("/", (req, res) => {
 });
 
 app.post('/create-subscription', async (req, res) => {
-	console.log(req.body);
 	const { priceId, start, name, email, address } = req.body;
 
 	try {
@@ -67,8 +66,8 @@ app.post('/create-subscription', async (req, res) => {
 			payment_behavior: 'default_incomplete',
 			expand: ['latest_invoice.payment_intent'],
 			metadata: {
-				start: start
-			}
+					start: start
+				}
 			}
 
 			if (start === "next") {
@@ -76,7 +75,10 @@ app.post('/create-subscription', async (req, res) => {
 			}
 
 			try {
-			const subscription = await stripe.subscriptions.create(sub_data);
+				const subscription = await stripe.subscriptions.create(sub_data);
+
+				console.log({subscription});
+
 				res.send({
 				  subscriptionId: subscription.id,
 				  clientSecret: subscription.latest_invoice.payment_intent.client_secret,
