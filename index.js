@@ -53,11 +53,27 @@ app.post('/create-subscription', async (req, res) => {
 	const { priceId, start, name, email, address } = req.body;
 
 	try {
+		console.log("Checking for Existing Customer");
+		const existing_customer = await stripe.customers.list({email: email});
+		console.log(existing_customer);
+		if (existing_customer.data.length > 0) {
+			console.log(`Existing Customer: ${email}`);
+			throw { existing_customer: true };
+		}
+	} catch (error) {
+		res.send(error);
+		return;
+	}
+
+	try {
 		const customer = await stripe.customers.create({
 			name: name,
 			email: email,
 			address: address
 		});
+
+		console.log(`Customer created: ${customer.id}`);
+
 		const sub_data = {
 			customer: customer.id,
 			items: [{
@@ -77,26 +93,30 @@ app.post('/create-subscription', async (req, res) => {
 			try {
 				const subscription = await stripe.subscriptions.create(sub_data);
 
+				console.log("Subscription created.");
 				console.log({subscription});
 
-				if (subscription.latest_invoice.payment_intent.client_secret) {
+				
+				if (subscription.latest_invoice.payment_intent) {
+					console.log("Sending client secret.");
 					res.send({
 						start: start,
 						subscriptionId: subscription.id,
 						clientSecret: subscription.latest_invoice.payment_intent.client_secret
 					});
 				} else {
+					console.log("Sending success message.");
 					res.send({
 						start: start,
 						subscriptionId: subscription.id
 					});
 				}
-
-				
 			} catch (error) {
+				console.log(error);
 				res.send(error);
 			}
-	} catch (error) {
+		} catch (error) {
+		console.log(error);
 		res.send(error);
 	}
 });
@@ -113,17 +133,8 @@ app.post('/webhooks', async (req, res) => {
   }
 
   const handleNewSubscription = async subscription => {
-
+	console.log("Setting up new customer");
 	const customer = await stripe.customers.retrieve(subscription.customer);
-
-	// This resets the billing anchor to the 1st of next July, after the customer has already been charged for the current issue.
-	if (subscription.metadata.start === 'current') {
-		await stripe.subscriptions.update(subscription.id, {
-			trial_end: handleDate(),
-			proration_behavior: 'none',
-		});
-	}
-
 
 	// Function to format the Stripe subscription created date correctly for storage in Airtable.
 	let formatDateForAirtable = (date) => {
@@ -132,31 +143,34 @@ app.post('/webhooks', async (req, res) => {
 		return d.toISOString();
 	}
 
-	// This logs the subscriber data to the Airtable database.
-	base(process.env.AIRTABLE_TABLE).create([
-		{
-			"fields": {
-				Subscription: subscription.id,
-				Email: customer.email,
-				Name: customer.name,
-				"Address Line One": customer.address.line1,
-				"Address Line Two": customer.address.line2,
-				City: customer.address.city,
-				Postcode: customer.address.postal_code,
-				Country: customer.address.country,
-				"Starts With": subscription.metadata.start,
-				Created: formatDateForAirtable(subscription.created)
+	if (customer.address) {
+		console.log("Adding to Airtable");
+		// This logs the subscriber data to the Airtable database.
+		base(process.env.AIRTABLE_TABLE).create([
+			{
+				"fields": {
+					Subscription: subscription.id,
+					Email: customer.email,
+					Name: customer.name,
+					"Address Line One": customer.address.line1,
+					"Address Line Two": customer.address.line2,
+					City: customer.address.city,
+					Postcode: customer.address.postal_code,
+					Country: customer.address.country,
+					"Starts With": subscription.metadata.start,
+					Created: formatDateForAirtable(subscription.created)
+				}
 			}
-		}
-		], {typecast: true}, function(err, records) {
-		if (err) {
-			console.error(err);
-			return;
-		}
-		records.forEach(function (record) {
-			console.log("Airtable Log:" + record.getId());
+			], {typecast: true}, function(err, records) {
+			if (err) {
+				console.error(err);
+				return;
+			}
+			records.forEach(function (record) {
+				console.log("Airtable Log:" + record.getId());
+			});
 		});
-	});
+	}
 
 
 	// This sends the admin notification email.
@@ -180,11 +194,48 @@ app.post('/webhooks', async (req, res) => {
 	console.log(customer, subscription, customer_email);
   }
 
+  const handlePaymentSuccess = async (payment_intent) => {
+	const invoice_data = await stripe.invoices.retrieve(payment_intent.invoice);
+
+	if (!invoice_data) {
+		console.log("No invoice found.");
+		console.log({payment_intent});
+		return;
+	}
+
+	if (invoice_data.billing_reason !== "subscription_create") {
+		return;
+	}
+
+	const subscription = await stripe.subscriptions.retrieve(invoice_data.subscription);
+
+	if (!subscription) {
+		console.log("No subscription found.");
+		console.log({invoice_data});
+		return;
+	}
+
+	// This resets the billing anchor to the 1st of next July, after the customer has already been charged for the current issue.
+	if (subscription.metadata.start === 'current') {
+		await stripe.subscriptions.update(subscription.id, {
+			trial_end: handleDate(),
+			proration_behavior: 'none',
+		});
+		console.log("Subscription Updated");
+		console.log({subscription});
+	}
+	
+}
+
   // Handle the event
   switch (event.type) {
     case 'customer.subscription.created':
       const newSubscriber = event.data.object;
 	  handleNewSubscription(newSubscriber);
+      break;
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+	  handlePaymentSuccess(paymentIntent);
       break;
     case 'customer.subscription.trial_will_end':
       let sub_data = event.data.object;
