@@ -143,7 +143,7 @@ app.post('/webhooks', async (req, res) => {
 		return d.toISOString();
 	}
 
-	if (customer.address && subscription.status !== 'incomplete' ) {
+	if (customer.address) {
 		console.log("Adding to Airtable");
 		// This logs the subscriber data to the Airtable database.
 		base(process.env.AIRTABLE_TABLE).create([
