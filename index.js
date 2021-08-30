@@ -143,7 +143,7 @@ app.post('/webhooks', async (req, res) => {
 		return d.toISOString();
 	}
 
-	if (customer.address) {
+	if (customer.address && subscription.status !== 'incomplete' ) {
 		console.log("Adding to Airtable");
 		// This logs the subscriber data to the Airtable database.
 		base(process.env.AIRTABLE_TABLE).create([
@@ -170,17 +170,18 @@ app.post('/webhooks', async (req, res) => {
 				console.log("Airtable Log:" + record.getId());
 			});
 		});
+		
+		// This sends the admin notification email.
+		mg.messages.create('mg.fallowmedia.com', {
+			from: "Holy Show Subs <holyshow@mg.fallowmedia.com>",
+			to: process.env.ADMIN_EMAIL,
+			subject: "New Subscriber",
+			text: `Hey, Holy Show has a new subscriber.\n\n ${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
+			html: `<p>Hey, you've got a new subscriber.</p><p>${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
+		}).then(msg => console.log(msg)).catch(err => console.log(err));
 	}
 
 
-	// This sends the admin notification email.
-	mg.messages.create('mg.fallowmedia.com', {
-		from: "Holy Show Subs <holyshow@mg.fallowmedia.com>",
-		to: process.env.ADMIN_EMAIL,
-		subject: "New Subscriber",
-		text: `Hey, Holy Show has a new subscriber.\n\n ${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue. \n\nYou'll find more details in the Airtable spreadsheet: https://airtable.com/shrYoZWugZisDZVnj`,
-		html: `<p>Hey, you've got a new subscriber.</p><p>${customer.name} is their name. Their subscription starts with the ${subscription.metadata.start} issue.</p><p>You'll find more details in <a href="https://airtable.com/shrYoZWugZisDZVnj">the Airtable spreadsheet</a>.</p>`,
-	}).then(msg => console.log(msg)).catch(err => console.log(err));
 	  
 
   }
