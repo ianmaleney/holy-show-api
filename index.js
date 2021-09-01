@@ -110,6 +110,15 @@ app.post('/create-subscription', async (req, res) => {
 						start: start,
 						subscriptionId: subscription.id
 					});
+					if (start === "next") {
+						mg.messages.create('mg.fallowmedia.com', {
+							from: "Holy Show Subs <holyshow@mg.fallowmedia.com>",
+							to: email,
+							subject: "You've subscribed to Holy Show Magazine",
+							text: `Dear ${customer.name}, thanks for subscribing to Holy Show.\n\nYYour subscription starts with the next issue, so you won't be charged until 1 July. We'll send you an email in advance to confirm your address before posting out the issue.\n\nIf you intended to buy the current issue, you can pick that up here: https://holyshow.ie/shop-1\n\nThanks again for the support!\n\nRegards,\nThe Holy Show Team`,
+							html: `<p>Dear ${customer.name}, thanks for subscribing to Holy Show.</p><p>Your subscription starts with the next issue, so you won't be charged until 1 July. We'll send you an email in advance to confirm your address before posting out the issue.</p><p>If you intended to buy the current issue, you can pick that up here: <a href="https://holyshow.ie/shop-1">https://holyshow.ie/shop-1</a></p><p>Thanks again for the support!</p><p>Regards,<br>The Holy Show Team</p>`,
+						}).then(msg => console.log(msg)).catch(err => console.log(err));
+					}
 				}
 			} catch (error) {
 				console.log(error);
@@ -192,7 +201,7 @@ app.post('/webhooks', async (req, res) => {
 
   const handlePaymentFailed = async (invoice_data) => {
 	let {customer, subscription, customer_email} = invoice_data;
-	console.log(customer, subscription, customer_email);
+	console.log("Payment Failed: ", customer, subscription, customer_email);
   }
 
   const handlePaymentSuccess = async (payment_intent) => {
