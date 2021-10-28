@@ -46,7 +46,7 @@ app.use(express.json());
 // Routes
 //
 app.get("/", (req, res) => {
-	res.send("Hello world.");
+	res.send("Wakeup.");
 });
 
 app.post('/create-subscription', async (req, res) => {
