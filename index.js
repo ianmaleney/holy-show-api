@@ -87,7 +87,8 @@ app.post('/create-subscription', async (req, res) => {
 			}
 
 			if (start === "next") {
-				sub_data.trial_end = handleDate();
+				sub_data.billing_cycle_anchor = handleDate();
+				sub_data.proration_behavior = "none";
 			}
 
 			try {
