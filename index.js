@@ -253,6 +253,21 @@ app.post('/webhooks', async (req, res) => {
 		console.log("Subscription Updated");
 		console.log({subscription});
 	}
+
+	// This sets the default payment method.
+	let customer = await stripe.customers.retrieve(subscription.customer, {
+		expand: ['sources'],
+	});
+
+	
+	if (!customer.default_source) {
+		let source = customer.sources.data[0];
+		const updateDefaultSource = await stripe.customers.update(subscription.customer, { default_source: source.id });
+	
+		console.log({updateDefaultSource});
+	}
+	
+
 	
 }
 
