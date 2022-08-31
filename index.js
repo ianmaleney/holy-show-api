@@ -98,7 +98,7 @@ app.post('/create-subscription', async (req, res) => {
 				console.log({subscription});
 
 				
-				if (subscription.latest_invoice.payment_intent) {
+				if (subscription.latest_invoice && subscription.latest_invoice.payment_intent) {
 					console.log("Sending client secret.");
 					res.send({
 						start: start,

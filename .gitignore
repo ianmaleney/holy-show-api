@@ -2,3 +2,5 @@
 .env
 .vscode
 update_subs.js
+unpaid.json
+update.js
