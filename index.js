@@ -50,7 +50,8 @@ app.get("/", (req, res) => {
 });
 
 app.post('/create-subscription', async (req, res) => {
-	const { priceId, start, name, email, address } = req.body;
+	console.log(req.body);
+	const { priceId, start, name, email, address, paymentMethod } = req.body;
 
 	try {
 		console.log("Checking for Existing Customer");
@@ -72,6 +73,20 @@ app.post('/create-subscription', async (req, res) => {
 			address: address
 		});
 
+		if (paymentMethod) {
+			const pm = await stripe.paymentMethods.attach(
+				paymentMethod,
+				{customer: customer.id}
+			);
+	
+			await stripe.customers.update(customer.id, {
+				invoice_settings: {
+					default_payment_method: paymentMethod
+				}
+			});
+		}
+
+
 		console.log(`Customer created: ${customer.id}`);
 
 		const sub_data = {
@@ -80,9 +95,6 @@ app.post('/create-subscription', async (req, res) => {
 				price: priceId,
 			}],
 			payment_behavior: 'default_incomplete',
-      		payment_settings: { 
-				save_default_payment_method: 'on_subscription' 
-			},
 			expand: ['latest_invoice.payment_intent'],
 			metadata: {
 					start: start
@@ -92,6 +104,9 @@ app.post('/create-subscription', async (req, res) => {
 			if (start === "next") {
 				sub_data.billing_cycle_anchor = handleDate();
 				sub_data.proration_behavior = "none";
+				if (paymentMethod) {
+					sub_data.default_payment_method = paymentMethod;
+				}
 			}
 
 			try {
