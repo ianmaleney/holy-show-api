@@ -8,7 +8,7 @@ const port = process.env.PORT || 8001;
 
 // Stripe Setup
 const Stripe = require('stripe');
-const stripe = Stripe(process.env.STRIPE_SK);
+const stripe = Stripe(process.env.STRIPE_SK_LIVE);
 
 // Airtable Setup
 const Airtable = require('airtable');
